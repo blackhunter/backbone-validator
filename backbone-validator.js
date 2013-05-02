@@ -34,9 +34,11 @@
     validate: function(attrs, validations, context) {
       var errors = {};
       _.chain(attrs).each(function(attrValue, attrName) {
-        var validation = validations[attrName];
-        var error = this._validateAll(validation, attrName, attrValue, context);
 
+        // Run validations for specific attribute name is any
+        var error = this._validateAll(validations[attrName], attrName, attrValue, context);
+
+        // Pushing only unique errors if any exists
         if (error.length) {
           errors[attrName] = _.uniq(error);
         }
@@ -45,10 +47,19 @@
       return _.size(errors) ? errors : null;
     },
 
+    /**
+     * Same as `validate` method but returns all validators wrapped into promises so it's possible
+     * to have async validators
+     */
+    validateAsync: function() {
+
+    },
+
     _validateAll: function(validations, attrName, attrValue, context) {
       context = context || this;
+      validations = validations || [];
 
-      return _.inject(_.flatten([validations || []]), function(errors, validation) {
+      return _.chain([validations]).flatten().inject(function(errors, validation) {
         _.chain(validation).omit('message').each(function(attrExpectation, validatorName) {
           var validator = this._validators[validatorName];
 
@@ -69,7 +80,7 @@
         }, this);
 
         return errors;
-      }, [], this);
+      }, [], this).value();
     },
 
     /**
