@@ -51,8 +51,45 @@
      * Same as `validate` method but returns all validators wrapped into promises so it's possible
      * to have async validators
      */
-    validateAsync: function() {
+    validateAsync: function(validators) {
 
+      // Find a better way to detect promises
+      function isPromise(object) {
+        return _.pick(object, 'then', 'done', 'fail', 'always').length === 4;
+      }
+
+      var deferreds = _.inject(validators, function(memo, validator) {
+
+        // Do validation
+        var result = validator(1),
+          promise,
+          deferred;
+
+        // Check if validation is async
+        if (isPromise(result)) {
+
+          // Need to push errors from failed promises into errors stack
+          promise = result;
+        } else {
+
+          // Create deferred wrapper and resolve it with validation result.
+          // Do really we need it?
+          deferred = $.Deferred();
+
+          if (result !== true) {
+            deferred.reject(result);
+          } else {
+            deferred.resolve(result);
+          }
+
+          promise = deferred.promise();
+        }
+
+        memo.push(promise);
+      }, []);
+
+
+      return $.when.apply($, deferreds);
     },
 
     _validateAll: function(validations, attrName, attrValue, context) {
@@ -60,6 +97,8 @@
       validations = validations || [];
 
       return _.chain([validations]).flatten().inject(function(errors, validation) {
+
+        // Validate through specific validation object omitting custom error message field
         _.chain(validation).omit('message').each(function(attrExpectation, validatorName) {
           var validator = this._validators[validatorName];
 
