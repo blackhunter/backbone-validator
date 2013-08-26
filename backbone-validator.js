@@ -130,16 +130,34 @@
         }
 
         this.listenTo(model, 'validated', function(model, attributes, errors) {
-          var callbacks = _.extend({}, Validator.ViewCallbacks, _.pick(this, 'onInvalidField', 'onValidField'), options);
+          var
+			  callbacks = _.extend({}, Validator.ViewCallbacks, _.pick(this, 'onInvalidField', 'onValidField'), options),
+			  form = {};
+
+			if(model.formOptions && this.formOptions.form)
+				form = this.formOptions.form;
+			else
+				form = this.el;
+
+			if(_.isFunction(form))
+				form = form();
+
+			if(_.isElement(form)){
+				if(!(form instanceof HTMLFormElement)){
+					if(!(form = form.getElementsByTagName('form')[0]))
+						form = {};
+				}
+			}
+
           errors = errors || {};
 
           _.each(attributes, function(value, name) {
             var attrErrors = errors[name];
 
             if (attrErrors && attrErrors.length) {
-              callbacks.onInvalidField.call(this, name, value, attrErrors, model);
+              callbacks.onInvalidField.call(this, name, value, attrErrors, (form[name] || null));
             } else {
-              callbacks.onValidField.call(this, name, value, model);
+              callbacks.onValidField.call(this, name, value, (form[name] || null));
             }
           }, this);
         });
@@ -271,18 +289,14 @@
   };
 
   Validator.ViewCallbacks = {
-    onValidField: function(name /*, value, model*/) {
-      var input = this.$('input[name="' + name + '"]');
-
-      input.removeClass('error');
-      input.next('.error-text').remove();
+    onValidField: function(name, value, input) {
+		if(_.isFunction(input.setCustomValidity))
+			input.setCustomValidity('');
     },
 
-    onInvalidField: function(name, value, errors /*, model*/) {
-      var input = this.$('input[name="' + name + '"]');
-
-      input.next('.error-text').remove();
-      input.addClass('error').after('<div class="error-text">' + errors.join(', ') + '</div>');
+    onInvalidField: function(name, value, errors, input) {
+		if(_.isFunction(input.setCustomValidity))
+			input.setCustomValidity(errors.join(', '));
     }
   };
 
@@ -339,21 +353,21 @@
     },
     {
       name: 'minLength',
-      message: 'Is too short',
+      message: 'Za mało znaków',
       fn: function(value, expectation) {
         return !value || value.length >= expectation;
       }
     },
     {
       name: 'maxLength',
-      message: 'Is too long',
+      message: 'Za dużo znaków',
       fn: function(value, expectation) {
         return !value || value.length <= expectation;
       }
     },
     {
       name: 'format',
-      message: 'Does not match format',
+      message: 'Format się nie zgadza',
       fn: function(value, expectation) {
         return !value || !!value.match(Validator.formats[expectation] || expectation);
       }
