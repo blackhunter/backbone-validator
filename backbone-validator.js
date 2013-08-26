@@ -293,14 +293,14 @@
   var validators = [
     {
       name: 'required',
-      message: 'Is required',
+      message: 'Pole wymagane',
       fn: function(value, expectation) {
         return expectation === false || !!value;
       }
     },
     {
       name: 'blank',
-      message: 'Could not be blank',
+      message: 'Pole nie może być puste',
       fn: function(value, expectation) {
         if (expectation === true) {
           return true;
